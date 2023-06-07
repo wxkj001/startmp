@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class TbasPage extends StatefulWidget {
   final String title;
@@ -61,10 +64,35 @@ class TbasPageState extends State<TbasPage> {
                     ),
                     TextButton(
                       onPressed: () async {
-                        print(_nameController.text);
-                        var response = await dio.get(
-                            'https://raw.githubusercontent.com/wxkj001/testmp/main/shop.json');
-                        print(response.data);
+                        Map<Permission, PermissionStatus> statuses = await [
+                          Permission.location,
+                          Permission.storage,
+                        ].request();
+                        print(statuses[Permission.storage]);
+                        if (await Permission.storage.request().isGranted) {
+                          //判断是否授权,没有授权会发起授权
+                          print("获得了授权");
+                          print(_nameController.text);
+                          try {
+                            var response = await dio.get(
+                                'https://ghproxy.com/https://raw.githubusercontent.com/wxkj001/testmp/main/shop.json');
+                            print(
+                                "DATA:" + jsonDecode(response.data)[0]["url"]);
+                            await dio.download(
+                                "https://ghproxy.com/" +
+                                    jsonDecode(response.data)[0]["url"],
+                                "/sdcard/1.wget",
+                                onReceiveProgress: (count, total) {
+                              print(count / total);
+                            });
+                          } catch (e) {
+                            print(e);
+                          }
+                        } else {
+                          print("没有获得授权");
+
+                          openAppSettings();
+                        }
                         Navigator.pop(context);
                       },
                       child: Text('确定'),
